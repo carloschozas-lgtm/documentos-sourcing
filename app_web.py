@@ -3,6 +3,7 @@ import re
 import io
 import zipfile
 import streamlit as st
+from pathlib import Path
 
 try:
     from docx import Document
@@ -16,6 +17,8 @@ try:
 except ImportError:
     XLSX_OK = False
 
+BASE_DIR = Path(__file__).parent
+
 TEXTO_ORIG = "SERVICIO DE DISEÑO, APLICACIÓN Y ANÁLISIS DE LA ENCUESTA DE GÉNERO ENAP 2026"
 TR_ORIG    = "TR31108756"
 
@@ -24,6 +27,9 @@ TEXTOS_ADICIONALES = [
 ]
 
 PATRON_TR = re.compile(r'[A-Z]{2}\d+')
+
+EXCLUIR = {"app_web.py", "doc_renamer.py"}
+EXCLUIR_DIRS = {"generados", ".streamlit", ".git", "__pycache__"}
 
 
 # ── Lógica de reemplazo ───────────────────────────────────────────────────────
@@ -55,7 +61,6 @@ def _reemplazar_tr(texto: str, nuevo_tr: str) -> tuple[str, int]:
 def _fix_parrafo(parr, nuevo_nombre: str, nuevo_tr: str) -> int:
     hits = 0
 
-    # Pasada 1 — nombre
     nombre_hits = 0
     for run in parr.runs:
         nuevo_txt, n = _reemplazar_nombre(run.text, nuevo_nombre)
@@ -72,7 +77,6 @@ def _fix_parrafo(parr, nuevo_nombre: str, nuevo_tr: str) -> int:
             nombre_hits += n
     hits += nombre_hits
 
-    # Pasada 2 — TR (fallback independiente)
     tr_hits = 0
     for run in parr.runs:
         nuevo_txt, n = _reemplazar_tr(run.text, nuevo_tr)
@@ -92,8 +96,8 @@ def _fix_parrafo(parr, nuevo_nombre: str, nuevo_tr: str) -> int:
     return hits
 
 
-def procesar_docx(file_bytes: bytes, nuevo_nombre: str, nuevo_tr: str) -> bytes:
-    doc = Document(io.BytesIO(file_bytes))
+def procesar_docx(src: Path, nuevo_nombre: str, nuevo_tr: str) -> tuple[bytes, int]:
+    doc = Document(src)
     total = 0
 
     def walk_parrafos(parrafos):
@@ -126,8 +130,8 @@ def procesar_docx(file_bytes: bytes, nuevo_nombre: str, nuevo_tr: str) -> bytes:
     return buf.getvalue(), total
 
 
-def procesar_xlsx(file_bytes: bytes, nuevo_nombre: str, nuevo_tr: str) -> bytes:
-    wb = openpyxl.load_workbook(io.BytesIO(file_bytes))
+def procesar_xlsx(src: Path, nuevo_nombre: str, nuevo_tr: str) -> tuple[bytes, int]:
+    wb = openpyxl.load_workbook(src)
     total = 0
     for ws in wb.worksheets:
         for fila in ws.iter_rows():
@@ -153,7 +157,7 @@ st.set_page_config(
 )
 
 st.title("📄 Documentos Sourcing")
-st.caption("Sube tus plantillas, ingresa los datos y descarga los documentos actualizados.")
+st.caption("Ingresa los datos del nuevo proceso y descarga los documentos actualizados.")
 st.divider()
 
 nuevo_nombre = st.text_area(
@@ -167,12 +171,6 @@ nuevo_tr = st.text_input(
     value=TR_ORIG,
 )
 
-archivos_subidos = st.file_uploader(
-    "Sube los archivos a procesar (.docx y .xlsx)",
-    type=["docx", "xlsx"],
-    accept_multiple_files=True,
-)
-
 st.divider()
 
 if st.button("▶ Generar Documentos", type="primary", use_container_width=True):
@@ -183,38 +181,40 @@ if st.button("▶ Generar Documentos", type="primary", use_container_width=True)
     if not nuevo_tr.strip():
         st.warning("Ingresa el nuevo código TR.")
         st.stop()
-    if not archivos_subidos:
-        st.warning("Sube al menos un archivo .docx o .xlsx.")
+
+    archivos = [
+        p for p in BASE_DIR.rglob("*")
+        if p.suffix.lower() in {".docx", ".xlsx"}
+        and p.name not in EXCLUIR
+        and not any(d in p.parts for d in EXCLUIR_DIRS)
+    ]
+
+    if not archivos:
+        st.warning("No se encontraron plantillas en el repositorio.")
         st.stop()
 
     resultados = []
     errores = []
 
-    with st.spinner("Procesando documentos..."):
+    with st.spinner(f"Procesando {len(archivos)} archivos..."):
         zip_buf = io.BytesIO()
         with zipfile.ZipFile(zip_buf, "w", zipfile.ZIP_DEFLATED) as zf:
-            for archivo in archivos_subidos:
-                nombre_orig = archivo.name
-                nombre_nuevo = PATRON_TR.sub(nuevo_tr.strip(), nombre_orig)
+            for src in sorted(archivos):
+                rel = src.relative_to(BASE_DIR)
+                nombre_nuevo = PATRON_TR.sub(nuevo_tr.strip(), rel.name)
+                zip_path = str(rel.parent / nombre_nuevo)
                 try:
-                    file_bytes = archivo.read()
-                    if nombre_orig.lower().endswith(".docx"):
-                        resultado_bytes, n = procesar_docx(
-                            file_bytes, nuevo_nombre.strip(), nuevo_tr.strip()
-                        )
+                    if src.suffix.lower() == ".docx":
+                        resultado_bytes, n = procesar_docx(src, nuevo_nombre.strip(), nuevo_tr.strip())
                     else:
-                        resultado_bytes, n = procesar_xlsx(
-                            file_bytes, nuevo_nombre.strip(), nuevo_tr.strip()
-                        )
-                    zf.writestr(nombre_nuevo, resultado_bytes)
-                    resultados.append((nombre_orig, nombre_nuevo, n))
+                        resultado_bytes, n = procesar_xlsx(src, nuevo_nombre.strip(), nuevo_tr.strip())
+                    zf.writestr(zip_path, resultado_bytes)
+                    resultados.append((str(rel), nombre_nuevo, n))
                 except Exception as exc:
-                    errores.append((nombre_orig, str(exc)))
+                    errores.append((str(rel), str(exc)))
 
     total_reempl = sum(n for _, _, n in resultados)
-    st.success(
-        f"✅ {len(resultados)} archivo(s) procesado(s) · {total_reempl} reemplazo(s) en total"
-    )
+    st.success(f"✅ {len(resultados)} archivo(s) generado(s) · {total_reempl} reemplazo(s) en total")
 
     zip_buf.seek(0)
     st.download_button(
@@ -226,8 +226,8 @@ if st.button("▶ Generar Documentos", type="primary", use_container_width=True)
     )
 
     with st.expander("Ver detalle por archivo"):
-        for nombre_orig, nombre_nuevo, n in resultados:
+        for rel, nombre_nuevo, n in resultados:
             icono = "✔️" if n else "➖"
-            st.write(f"{icono} `{nombre_orig}` → `{nombre_nuevo}` — {n} reemplazo{'s' if n != 1 else ''}")
-        for nombre_orig, err in errores:
-            st.error(f"✘ `{nombre_orig}` — {err}")
+            st.write(f"{icono} `{rel}` → `{nombre_nuevo}` — {n} reemplazo{'s' if n != 1 else ''}")
+        for rel, err in errores:
+            st.error(f"✘ `{rel}` — {err}")
