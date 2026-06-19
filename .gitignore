@@ -1,0 +1,4 @@
+generados/
+doc_renamer.py
+__pycache__/
+*.pyc
