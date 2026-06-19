@@ -1,0 +1,22 @@
+Favor adjuntar en documentos solicitados en las bases administrativas
+(Bases administrativas -> "Evaluación de prevención de riesgos" -> Sistema de Gestión HSE)
+
+A continuación, los documentos obligatorios para todos los servicios:
+- Matriz de identificación de peligros y evaluación de riesgos del servicio ofertado (NO GENÉRICA)
+- Matriz de EPP según rol/especialidad
+- Matriz de identificación de aspectos ambientales y evaluación de impactos (NO GENÉRICA)
+- Matriz de requisitos legales HSE (SSO-MA)
+ 
+A continuación los documentos que dependen del riesgo del servicio:
+- Plan de gestión de seguridad y salud ocupacional
+- Plan de gestión medio ambiental
+- Plan de capacitación de seguridad y salud ocupacional
+- PLan de capacitación de medio ambiente
+- Política de Seguridad y Salud Ocupacional
+- Política de prevención de adicciones
+- Política Medioambental
+- Certificación vigente del sistema de gestión HSE acreditada (Para los procesos que tienen relación con el servicio que se está ofertando)
+- Planes de respuesta ante emergencias y simulacro
+- Metodología de investigación de incidentes
+
+**Subir todos los documentos de forma independiente, no agrupar todo en un solo PDF**

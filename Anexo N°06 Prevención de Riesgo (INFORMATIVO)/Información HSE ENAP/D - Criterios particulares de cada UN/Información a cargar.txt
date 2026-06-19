@@ -1,0 +1,5 @@
+Revisar las bases administrativas (Bases administrativas -> "Evaluación de prevención de riesgos" -> Particularidades por unidad de negocio)
+Cargar la información solicitada para cada unidad de negocio que se esté ofertando, en carpetas separadas.
+
+
+**Subir todos los documentos de forma independiente, no agrupar todo en un solo PDF**

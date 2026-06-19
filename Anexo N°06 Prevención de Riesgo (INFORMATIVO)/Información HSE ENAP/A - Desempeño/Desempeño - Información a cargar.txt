@@ -1,0 +1,9 @@
+Certificado de siniestralidad de organismo administrador de la ley 16.744 (Mutual de seguridad, IST, ACHS)
+- Debe ser del mismo RUT de la empresa que está ofertando el servicio
+- Debe entregarse información de los últimos 36 meses, detallando al menos:
+	- Número de trabajadores
+	- Número de accidentes con tiempo perdido
+	- Cantidad de horas hombre
+	- Índice de frecuencia / Tasa de frecuencia / Indicador de frecuencia
+	- Índice de gravedad / Tasa de gravedad / Indicador de gravedad
+	- Número de accidentes fatales
